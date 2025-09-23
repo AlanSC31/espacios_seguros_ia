@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@CrossOrigin(origins = "*")
 @RequestMapping("/usuarios")
 public class UsuarioController {
     @Autowired
@@ -28,15 +29,15 @@ public class UsuarioController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody Map<String, String> body) {
+    public ResponseEntity<Usuario> login(@RequestBody Map<String, String> body) {
         try {
             String nombre = body.get("nombre");
             String password = body.get("password");
-            String msg = usuarioService.login(nombre, password);
+            Usuario usuario = usuarioService.login(nombre, password); 
 
-            return ResponseEntity.ok(msg);
+            return ResponseEntity.ok(usuario); 
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build(); 
         }
     }
 

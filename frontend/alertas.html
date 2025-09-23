@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Alertas de Congestión</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body class="d-flex flex-column min-vh-100">
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+            <div class="container-fluid d-flex justify-content-between align-items-center">
+
+                <a class="navbar-brand py-3" href="#"><strong>Monitoreo Público</strong></a>
+
+                <strong>
+                    <div id="saludo" class="text-white text-center flex-grow-1">
+                    </div>
+                </strong>
+
+                <div class="d-flex align-items-center">
+                    <button class="navbar-toggler me-2" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false"
+                        aria-label="Toggle navigation">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+
+                    <div class="collapse navbar-collapse" id="navbarNav">
+                        <ul class="navbar-nav ms-auto">
+                            <li class="nav-item">
+                                <a class="nav-link" href="admin_panel.html">Usuarios</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link active" aria-current="page" href="alertas.html">Alertas congestion</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="conteo_zona.html">Conteo por zona</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#" onclick="logout()">Cerrar Sesión</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mt-4 flex-grow-1 mb-4">
+
+        <h2>Alertas de Congestión</h2>
+
+        <form id="filtroFechas" class="row g-3 align-items-end mb-4">
+            <div class="col-md-4">
+                <label for="fechaDesde" class="form-label">Desde:</label>
+                <input type="datetime-local" id="fechaDesde" class="form-control" required />
+            </div>
+            <div class="col-md-4">
+                <label for="fechaHasta" class="form-label">Hasta:</label>
+                <input type="datetime-local" id="fechaHasta" class="form-control" required />
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+            </div>
+        </form>
+
+        <canvas id="chartAlertas" height="100"></canvas>
+
+        <!-- Contenedor para mostrar alertas específicas -->
+        <div id="listaAlertas" class="mt-4"></div>
+    </main>
+
+    <script>
+        // Validar usuario en sesión
+        const usuario = JSON.parse(sessionStorage.getItem("usuario"));
+        if (!usuario || usuario.rol !== 0) {
+            window.location.href = "login.html";
+        } else {
+            document.getElementById("saludo").textContent = `Bienvenido, ${usuario.nombre}`;
+        }
+
+        // Configuración inicial de fechas (últimas 24 horas)
+        const fechaHastaInput = document.getElementById("fechaHasta");
+        const fechaDesdeInput = document.getElementById("fechaDesde");
+
+        const ahora = new Date();
+        const haceUnDia = new Date(ahora.getTime() - 24 * 60 * 60 * 1000);
+
+        fechaHastaInput.value = ahora.toISOString().slice(0, 16);
+        fechaDesdeInput.value = haceUnDia.toISOString().slice(0, 16);
+
+        const ctx = document.getElementById("chartAlertas").getContext("2d");
+        let chart;
+
+        function normalizarFecha(fechaStr) {
+            if (!fechaStr) return null;
+            // Si tiene formato "YYYY-MM-DDTHH:mm" (longitud 16), agregar ":00Z" para que JS lo entienda bien
+            return fechaStr.length === 16 ? fechaStr + ":00Z" : fechaStr;
+        }
+
+        async function cargarAlertas(desdeStr, hastaStr) {
+            const desdeISO = normalizarFecha(desdeStr);
+            const hastaISO = normalizarFecha(hastaStr);
+
+            if (!desdeISO || !hastaISO) {
+                alert("Por favor selecciona ambas fechas.");
+                return;
+            }
+
+            const desdeDate = new Date(desdeISO);
+            const hastaDate = new Date(hastaISO);
+
+            if (isNaN(desdeDate.getTime()) || isNaN(hastaDate.getTime())) {
+                alert("Fecha inválida");
+                return;
+            }
+
+            try {
+                const res = await fetch(
+                    `http://localhost:8082/alertas/get?desde=${encodeURIComponent(desdeDate.toISOString())}&hasta=${encodeURIComponent(hastaDate.toISOString())}`
+                );
+
+                if (!res.ok) throw new Error("Error al obtener alertas");
+
+                const alertas = await res.json();
+
+                // Agrupamos por fecha y zona, pero sin sumar cantidades
+                const agrupado = {};
+                const zonas = new Set();
+
+                alertas.forEach(({ fila, columna, cantidad, fechaCreacion }) => {
+                    const fecha = new Date(fechaCreacion);
+                    const fechaKey = fecha.toISOString().slice(0, 16).replace("T", " ");
+                    const zonaKey = `F${fila}C${columna}`;
+                    zonas.add(zonaKey);
+
+                    if (!agrupado[fechaKey]) agrupado[fechaKey] = {};
+                    agrupado[fechaKey][zonaKey] = cantidad;
+                });
+
+                // Obtener todas las fechas ordenadas
+                const fechasOrdenadas = Object.keys(agrupado).sort();
+
+                // Crear un array ordenado de zonas para consistencia
+                const zonasArray = [...zonas].sort();
+
+                // Completar datos faltantes con 0 para cada fecha y zona
+                fechasOrdenadas.forEach(fecha => {
+                    zonasArray.forEach(zona => {
+                        if (!agrupado[fecha][zona]) {
+                            agrupado[fecha][zona] = 0;
+                        }
+                    });
+                });
+
+                // Crear datasets para el gráfico
+                const datasets = zonasArray.map((zona, i) => {
+                    const data = fechasOrdenadas.map(fecha => agrupado[fecha][zona]);
+                    const color = `hsl(${(i * 360) / zonasArray.length}, 70%, 50%)`; // colores HSL
+
+                    return {
+                        label: zona,
+                        data,
+                        borderColor: color,
+                        backgroundColor: color,
+                        fill: false,
+                        tension: 0.3,
+                        pointRadius: 3,
+                        pointHoverRadius: 6,
+                    };
+                });
+
+                if (chart) chart.destroy();
+
+                chart = new Chart(ctx, {
+                    type: "line",
+                    data: {
+                        labels: fechasOrdenadas,
+                        datasets,
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: {
+                                title: { display: true, text: "Fecha y hora" },
+                                ticks: {
+                                    maxRotation: 90,
+                                    minRotation: 45,
+                                    autoSkip: true,
+                                    maxTicksLimit: 20,
+                                },
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: { display: true, text: "Cantidad" },
+                            },
+                        },
+                    },
+                });
+
+                // FILTRAR Y MOSTRAR ALERTAS DE CONGESTIÓN (>=5 personas)
+                const contenedorAlertas = document.getElementById("listaAlertas");
+
+                // Limpiar el contenedor antes de agregar
+                contenedorAlertas.innerHTML = "";
+
+                let alertasCongestion = [];
+
+                fechasOrdenadas.forEach((fecha) => {
+                    zonasArray.forEach(zona => {
+                        const cantidad = agrupado[fecha][zona] || 0;
+                        if (cantidad >= 5) {
+                            alertasCongestion.push({ fecha, zona, cantidad });
+                        }
+                    });
+                });
+
+                if (alertasCongestion.length === 0) {
+                    contenedorAlertas.innerHTML = "<p>No se detectaron alertas de congestión en el rango seleccionado.</p>";
+                } else {
+                    const lista = document.createElement("ul");
+                    lista.classList.add("list-group");
+                    alertasCongestion.forEach(({ fecha, zona, cantidad }) => {
+                        const li = document.createElement("li");
+                        li.className = "list-group-item list-group-item-danger";
+                        li.textContent = `Zona ${zona} - ${fecha} - ${cantidad} personas`;
+                        lista.appendChild(li);
+                    });
+                    contenedorAlertas.appendChild(lista);
+                }
+            } catch (error) {
+                alert("Error al cargar alertas: " + error.message);
+                console.error(error);
+            }
+        }
+
+
+        // Evento submit del formulario para filtrar
+        document.getElementById("filtroFechas").addEventListener("submit", e => {
+            e.preventDefault();
+            cargarAlertas(fechaDesdeInput.value, fechaHastaInput.value);
+        });
+
+        // Cargar alertas al cargar la página (últimas 24h)
+        cargarAlertas(fechaDesdeInput.value, fechaHastaInput.value);
+
+        function logout() {
+            sessionStorage.clear();
+            window.location.href = "login.html";
+        }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dashboard Detecciones</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="dashboard.js" defer></script>
+</head>
+<body class="d-flex flex-column min-vh-100">
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid d-flex justify-content-between align-items-center">
+            <a class="navbar-brand py-3" href="#"><strong>Monitoreo Público</strong></a>
+            <strong><div id="saludo" class="text-white text-center flex-grow-1"></div></strong>
+            <div class="d-flex align-items-center">
+                <button class="navbar-toggler me-2" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item"><a class="nav-link" href="admin_panel.html">Usuarios</a></li>
+                        <li class="nav-item"><a class="nav-link" href="alertas.html">Alertas congestión</a></li>
+                        <li class="nav-item"><a class="nav-link" href="conteo_zona.html">Conteo por zona</a></li>
+                        <li class="nav-item"><a class="nav-link" href="trash_dashboard.html">Conteo de basura</a></li>
+                        <li class="nav-item"><a class="nav-link" href="#" onclick="logout()">Cerrar Sesión</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container my-4">
+        <h1 class="text-start mb-4">Analíticas</h1>
+        <h2 class="text-center mb-3">Datos Generales</h2>
+        <div class="container">
+            <table class="table table-striped" id="idTabla">
+            </table>
+        </div>
+        <h2 class="text-center mb-4">Dashboards</h2>
+        <div id="miCarrusel" class="carousel slide mb-3" data-bs-ride="carousel">
+            <div class="carousel-inner">
+                <div class="chart-container carousel-item active">
+                    <canvas class="" id="barChart"></canvas>
+                </div>
+                <div class="chart-container carousel-item">
+                    <canvas id="pieChart"></canvas>
+                </div>
+                <div class="chart-container carousel-item"">
+                    <canvas id="lineChart"></canvas>
+                </div>
+                <div class="chart-container carousel-item"">
+                    <canvas id="radarChart"></canvas>
+                </div>
+                <div class="chart-container carousel-item"">
+                    <canvas id="doughnutChart"></canvas>
+                </div>
+                <div class="chart-container carousel-item"">
+                    <canvas id="groupedChart"></canvas>
+                </div>
+            </div>
+            <button class="carousel-control-prev" type="button" data-bs-target="#miCarrusel" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Previous</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#miCarrusel" data-bs-slide="next">
+                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Next</span>
+            </button>
+        </div>
+    </main>
+
+    <footer class="bg-dark text-white text-center py-3 mt-auto">
+        <div class="container">
+            <p class="mb-1">© 2025 Monitoreo Público.</p>
+            <p class="mb-1">Proyecto servicio social</p>
+        </div>
+    </footer>
+
+    <style>
+        .carousel-control-prev,
+        .carousel-control-next {
+            width: 3rem;               /* tamaño del área clickable */
+            top: 50%;                  /* centrar verticalmente */
+            transform: translateY(-50%);
+            background-color: black;
+        }
+
+        /* Mover el “prev” 30px a la izquierda de todo el carrusel */
+        .carousel-control-prev {
+            left: -50px;
+        }
+
+        /* Mover el “next” 30px a la derecha de todo el carrusel */
+        .carousel-control-next {
+            right: -50px;
+        }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

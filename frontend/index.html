@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoreo público</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+</head>
+
+<body class="bg-light d-flex flex-column min-vh-100">
+    <header class="bg-dark text-white py-5 mt-auto">
+        <div class="container">
+            <div class="text-center">
+                <h2>Monitoreo Público</h2>
+            </div>
+        </div>
+    </header>
+
+    <div class="d-flex justify-content-center align-items-center flex-grow-1">
+        <form class="needs-validation p-4 bg-white shadow rounded"
+            style="width: 100%; max-width: 400px; min-height: 500px;" id="loginForm" novalidate>
+            <h1 class="mt-2 mb-3">Iniciar sesión</h2>
+                <div class="invalid-feedback fs-18" id="loginError" style="display:none;">Rellena todos los campos</div>
+
+                <div class="mb-3">
+                    <label for="usuario" class="mt-4">Usuario</label>
+                    <input type="text" class="form-control mt-2" id="usuario" placeholder="ingresa tu usuario" required>
+                </div>
+                <div class="mb-3 mt-4">
+                    <label for="password">Contraseña</label>
+                    <input type="password" class="form-control mt-2 mb-2" id="password"
+                        placeholder="ingresa tu contraseña" required>
+                    <a href="" class="link-primary text-decoration-none">Recuperar mi contraseña</a>
+                </div>
+                <div class="text-end">
+                    <button type="submit" class="btn btn-dark w-100 py-2 mt-3">Entrar</button>
+                </div>
+
+        </form>
+    </div>
+    <footer class="bg-dark text-white text-center py-3 mt-auto">
+        <div class="container">
+            <p class="mb-1">© 2025 monitoreo público.</p>
+            <p class="mb-1">Proyecto servicio social</p>
+        </div>
+    </footer>
+</body>
+
+<!-- forms validation -->
+<script>
+
+    (() => {
+        'use strict'
+        const forms = document.querySelectorAll('.needs-validation')
+        Array.from(forms).forEach(form => {
+            form.addEventListener('submit', event => {
+                if (!form.checkValidity()) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                }
+                form.classList.add('was-validated')
+            }, false)
+        })
+    })()
+</script>
+
+<script>
+    const form = document.getElementById('loginForm');
+    const usuarioInput = document.getElementById('usuario');
+    const passwordInput = document.getElementById('password');
+    const loginError = document.getElementById('loginError');
+
+    form.addEventListener('submit', e => {
+        e.preventDefault();
+
+        loginError.style.display = 'none';
+        usuarioInput.classList.remove('is-invalid');
+        passwordInput.classList.remove('is-invalid');
+        form.classList.remove('was-validated');
+
+        if (!form.checkValidity()) {
+            form.classList.add('was-validated');
+            return;
+        }
+
+        const nombre = usuarioInput.value;
+        const password = passwordInput.value;
+
+        fetch('http://localhost:8080/usuarios/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nombre: nombre, password: password }),
+        })
+            .then(res => {
+                if (!res.ok) throw new Error('Credenciales incorrectas');
+                return res.json(); 
+            })
+            .then(usuario => {
+                sessionStorage.setItem("usuario", JSON.stringify(usuario));
+
+                if (usuario.rol === 0) {
+                    window.location.href = "admin_panel.html";
+                } else {
+                    window.location.href = "usuario_panel.html";
+                }
+            })
+            .catch(err => {
+                loginError.textContent = err.message;
+                loginError.style.display = 'block';
+                usuarioInput.classList.add('is-invalid');
+                passwordInput.classList.add('is-invalid');
+            });
+
+    });
+</script>
+
+</script>
+
+
+
+</html>

@@ -5,7 +5,7 @@ import time
 import mysql.connector
 from collections import defaultdict
 
-# 📌 Conexión a la base de datos
+# Conexión a la base de datos
 db = mysql.connector.connect(
     host="sql5.freesqldatabase.com",
     user="sql5782791",
@@ -14,32 +14,31 @@ db = mysql.connector.connect(
 )
 cursor = db.cursor()
 
-# 📦 Modelo YOLO
-model = YOLO("yolov8n.pt")
+# Modelo YOLO
+model = YOLO("yolov8m.pt")
 
-# 🎥 Video o cámara
+# source
 cap = cv2.VideoCapture("personas_calle_3.mp4")
 
-# ⚙️ Configuración de salida
+# Configuración de output
 width, height = int(cap.get(3)), int(cap.get(4))
 fps = cap.get(cv2.CAP_PROP_FPS)
 out = cv2.VideoWriter('conteo_area.mp4', cv2.VideoWriter_fourcc(*'mp4v'), fps, (width, height))
 
-# 📊 Parámetros
+# params
 grid_rows, grid_cols = 2, 2
 cell_height, cell_width = height // grid_rows, width // grid_cols
 umbral_concurrido = 5
 intervalo_zona = 5
 intervalo_conteo = 3
-intervalo_batch = 5  # 🔁 insertar a BD cada 5 seg
-
-# 📋 Estados
+intervalo_batch = 5  #  insertar a BD cada 5 seg
+# states
 tiempo_celda = defaultdict(lambda: defaultdict(float))
 celda_actual = {}
 personas_detectadas = set()
 ultima_insercion_batch = time.time()
 
-# 🗃️ Buffers de datos para batch insert
+# Buffers de datos para batch insert
 buffer_zona = []
 buffer_conteo = []
 buffer_alertas = []
@@ -89,7 +88,7 @@ while cap.isOpened():
             cv2.putText(frame, f"ID:{id_persona} T:{int(tiempo_en_zona)}s", (cx, y1 - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
 
-    # 📌 Conteo y alertas por celda
+    # Conteo y alertas por celda
     for i in range(grid_rows):
         for j in range(grid_cols):
             cantidad = int(grid_counts[i, j])
@@ -105,7 +104,7 @@ while cap.isOpened():
             cv2.putText(frame, f"{cantidad} p", (x1 + 5, y1 + 20),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
-    # 💾 INSERTAR A BASE DE DATOS CADA N SEGUNDOS
+    # INSERTAR A BASE DE DATOS CADA N SEGUNDOS
     if tiempo_actual - ultima_insercion_batch >= intervalo_batch:
         if buffer_zona:
             cursor.executemany(
@@ -133,7 +132,7 @@ while cap.isOpened():
 
     out.write(frame)
 
-# 🔚 Liberar recursos
+# Liberar recursos
 cap.release()
 out.release()
 cursor.close()

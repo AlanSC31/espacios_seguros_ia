@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Conteo por zona</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body class="d-flex flex-column min-vh-100">
+
+  <header>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+      <div class="container-fluid d-flex justify-content-between align-items-center">
+        <a class="navbar-brand py-3" href="#"><strong>Monitoreo Público</strong></a>
+        <strong><div id="saludo" class="text-white text-center flex-grow-1"></div></strong>
+        <div class="d-flex align-items-center">
+          <button class="navbar-toggler me-2" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+              <li class="nav-item"><a class="nav-link" href="admin_panel.html">Usuarios</a></li>
+              <li class="nav-item"><a class="nav-link" href="alertas.html">Alertas congestión</a></li>
+              <li class="nav-item"><a class="nav-link active" aria-current="page" href="conteo_zona.html">Conteo por zona</a></li>
+              <li class="nav-item"><a class="nav-link" href="#" onclick="logout()">Cerrar Sesión</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main class="container my-4">
+    <h2 class="mb-4 text-center">Conteo por zona</h2>
+
+    <!-- Filtros -->
+    <div class="row mb-3 justify-content-center">
+      <div class="col-md-3">
+        <label for="desde" class="form-label">Desde:</label>
+        <input type="datetime-local" id="desde" class="form-control" />
+      </div>
+      <div class="col-md-3">
+        <label for="hasta" class="form-label">Hasta:</label>
+        <input type="datetime-local" id="hasta" class="form-control" />
+      </div>
+      <div class="col-md-3">
+        <label for="zonaFiltro" class="form-label">Zona:</label>
+        <select id="zonaFiltro" class="form-select">
+          <option value="todas">Todas</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="text-center mb-4">
+      <button class="btn btn-primary" onclick="cargarDatos()">Buscar</button>
+    </div>
+
+    <!-- Gráfica -->
+    <div class="card">
+      <div class="card-body">
+        <canvas id="grafica" height="120"></canvas>
+      </div>
+    </div>
+  </main>
+
+  <footer class="bg-dark text-white text-center py-3 mt-auto">
+    <div class="container">
+      <p class="mb-1">© 2025 Monitoreo Público.</p>
+      <p class="mb-1">Proyecto servicio social</p>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script>
+    const usuario = JSON.parse(sessionStorage.getItem("usuario"));
+    if (!usuario || usuario.rol !== 0) {
+      window.location.href = "login.html";
+    } else {
+      document.getElementById("saludo").textContent = `Bienvenido, ${usuario.nombre}`;
+    }
+
+    function logout() {
+      sessionStorage.clear();
+      window.location.href = 'index.html';
+    }
+
+    let todosLosDatos = [];
+
+    async function cargarDatos() {
+      const desde = document.getElementById("desde").value;
+      const hasta = document.getElementById("hasta").value;
+
+      try {
+        const response = await fetch(`http://localhost:8084/conteo/por-rango?desde=${desde}&hasta=${hasta}`);
+        const data = await response.json();
+        todosLosDatos = data; // guardamos todos los datos
+
+        poblarZonas(data);
+        renderizarGrafica();
+
+      } catch (error) {
+        console.error("Error al cargar datos:", error);
+        alert("No se pudieron cargar los datos. Asegúrate de que el backend esté corriendo.");
+      }
+    }
+
+    function poblarZonas(data) {
+      const zonasUnicas = new Set();
+      data.forEach(r => zonasUnicas.add(`F${r.fila}C${r.columna}`));
+
+      const zonaSelect = document.getElementById("zonaFiltro");
+      zonaSelect.innerHTML = '<option value="todas">Todas</option>';
+      zonasUnicas.forEach(zona => {
+        const option = document.createElement("option");
+        option.value = zona;
+        option.textContent = zona;
+        zonaSelect.appendChild(option);
+      });
+    }
+
+    function renderizarGrafica() {
+      const zonaSeleccionada = document.getElementById("zonaFiltro").value;
+      const datosFiltrados = zonaSeleccionada === "todas"
+        ? todosLosDatos
+        : todosLosDatos.filter(r => `F${r.fila}C${r.columna}` === zonaSeleccionada);
+
+      const zonasAgrupadas = {};
+      const etiquetasSet = new Set();
+
+      datosFiltrados.forEach(registro => {
+        const zona = `F${registro.fila}C${registro.columna}`;
+        const fecha = new Date(registro.timestamp).toLocaleString();
+
+        etiquetasSet.add(fecha);
+        if (!zonasAgrupadas[zona]) {
+          zonasAgrupadas[zona] = {};
+        }
+        zonasAgrupadas[zona][fecha] = registro.cantidad;
+      });
+
+      const etiquetas = Array.from(etiquetasSet).sort();
+
+      const datasets = Object.keys(zonasAgrupadas).map((zona, i) => {
+        const color = `hsl(${i * 60}, 70%, 50%)`;
+        return {
+          label: zona,
+          data: etiquetas.map(fecha => zonasAgrupadas[zona][fecha] || 0),
+          backgroundColor: color
+        };
+      });
+
+      const ctx = document.getElementById('grafica').getContext('2d');
+      if (window.miGrafica) {
+        window.miGrafica.destroy();
+      }
+
+      window.miGrafica = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: etiquetas,
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'top' },
+            title: {
+              display: true,
+              text: zonaSeleccionada === "todas"
+                ? 'Conteo de personas por zona y hora'
+                : `Conteo de personas en zona ${zonaSeleccionada}`
+            }
+          },
+          scales: {
+            x: {
+              stacked: false,
+              ticks: { maxRotation: 45, minRotation: 45 }
+            },
+            y: {
+              beginAtZero: true,
+              ticks: {
+                stepSize: 1,
+                callback: function(value) {
+                  return Number.isInteger(value) ? value : null;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Redibuja la gráfica si cambias la zona
+    document.getElementById("zonaFiltro").addEventListener("change", () => {
+      if (todosLosDatos.length > 0) {
+        renderizarGrafica();
+      }
+    });
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

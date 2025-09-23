@@ -1,0 +1,11 @@
+C:\Users\tonyj\Documents\Jok\Projects\Service Project\basura-deteccion-service\src\main\java\com\trash_segmentation\basura_deteccion_service\config\TrashSegmentationConfig.java
+C:\Users\tonyj\Documents\Jok\Projects\Service Project\basura-deteccion-service\src\main\java\com\trash_segmentation\basura_deteccion_service\controller\TrashSegmentationController.java
+C:\Users\tonyj\Documents\Jok\Projects\Service Project\basura-deteccion-service\src\main\java\com\trash_segmentation\basura_deteccion_service\dto\ConteoByDate.java
+C:\Users\tonyj\Documents\Jok\Projects\Service Project\basura-deteccion-service\src\main\java\com\trash_segmentation\basura_deteccion_service\dto\ConteoByDiaPerEtiqueta.java
+C:\Users\tonyj\Documents\Jok\Projects\Service Project\basura-deteccion-service\src\main\java\com\trash_segmentation\basura_deteccion_service\dto\ConteoByDiaSemana.java
+C:\Users\tonyj\Documents\Jok\Projects\Service Project\basura-deteccion-service\src\main\java\com\trash_segmentation\basura_deteccion_service\dto\ProportionByEtiqueta.java
+C:\Users\tonyj\Documents\Jok\Projects\Service Project\basura-deteccion-service\src\main\java\com\trash_segmentation\basura_deteccion_service\dto\TotalByEtiqueta.java
+C:\Users\tonyj\Documents\Jok\Projects\Service Project\basura-deteccion-service\src\main\java\com\trash_segmentation\basura_deteccion_service\dto\TotalConteo.java
+C:\Users\tonyj\Documents\Jok\Projects\Service Project\basura-deteccion-service\src\main\java\com\trash_segmentation\basura_deteccion_service\model\TrashSegmentationModel.java
+C:\Users\tonyj\Documents\Jok\Projects\Service Project\basura-deteccion-service\src\main\java\com\trash_segmentation\basura_deteccion_service\repository\TrashSegmentationRepository.java
+C:\Users\tonyj\Documents\Jok\Projects\Service Project\basura-deteccion-service\src\main\java\com\trash_segmentation\basura_deteccion_service\TrashSegmentationApplication.java

@@ -29,16 +29,14 @@ public class UsuarioService {
         return "Usuario registrado con exito";
     }
 
-    public String login(String nombre, String password) {
-        Usuario usuario = usuarioRep.findByNombre(nombre);
-        if (usuario == null) {
-            throw new RuntimeException("Usuario no encontrado");
-        }
-        if (!passwordEncoder.matches(password, usuario.getPassword())) {
-            throw new RuntimeException("Usuario no encontrado");
-        }
-        return "Login exitoso";
+public Usuario login(String nombre, String password) {
+    Usuario usuario = usuarioRep.findByNombre(nombre);
+    if (usuario == null || !passwordEncoder.matches(password, usuario.getPassword())) {
+        throw new RuntimeException("Credenciales incorrectas");
     }
+
+    return usuario; // devuelves el objeto completo
+}
 
     public List<Usuario> getActiveUsers() {
         return usuarioRep.findByStatusTrue();

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Panel adminsitrador</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="d-flex flex-column min-vh-100">
+
+
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+            <div class="container-fluid d-flex justify-content-between align-items-center">
+
+                <a class="navbar-brand py-3" href="#"><strong>Monitoreo Público</strong></a>
+
+                <strong>
+                    <div id="saludo" class="text-white text-center flex-grow-1">
+                    </div>
+                </strong>
+
+                <div class="d-flex align-items-center">
+                    <button class="navbar-toggler me-2" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false"
+                        aria-label="Toggle navigation">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+
+                    <div class="collapse navbar-collapse" id="navbarNav">
+                        <ul class="navbar-nav ms-auto">
+                            <li class="nav-item">
+                                <a class="nav-link active" aria-current="page" href="#">Usuarios</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="alertas.html">Alertas congestion</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="conteo_zona.html">Conteo por zona</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#" onclick="logout()">Cerrar Sesión</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
+        </nav>
+    </header>
+
+    <div class="container mt-4">
+        <h2>Panel de administración de usuarios</h2>
+
+        <!-- Formulario para crear usuario -->
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header bg-dark text-white">Crear nuevo usuario</div>
+            <div class="card-body">
+                <form id="createUserForm" class="row g-3 needs-validation" novalidate>
+                    <div class="col-md-4">
+                        <label for="newNombre" class="form-label">Nombre</label>
+                        <input type="text" class="form-control" id="newNombre" required>
+                        <div class="invalid-feedback">Ingrese un nombre válido</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="newPassword" class="form-label">Contraseña</label>
+                        <input type="password" class="form-control" id="newPassword" required>
+                        <div class="invalid-feedback">Ingrese una contraseña</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="newRol" class="form-label">Rol</label>
+                        <select id="newRol" class="form-select" required>
+                            <option value="">Selecciona un rol</option>
+                            <option value="0">Admin</option>
+                            <option value="1">Usuario común</option>
+                        </select>
+                        <div class="invalid-feedback">Selecciona un rol</div>
+                    </div>
+                    <div class="col-12 text-end">
+                        <button class="btn btn-primary" type="submit">Crear usuario</button>
+                    </div>
+                </form>
+                <div id="createUserMsg" class="mt-2"></div>
+            </div>
+        </div>
+
+        <!-- Tabla usuarios -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white">Usuarios activos</div>
+            <div class="card-body p-0">
+                <table class="table table-striped mb-0" id="usersTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Rol</th>
+                            <th>Activo</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Usuarios cargados aquí -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        const usuario = JSON.parse(sessionStorage.getItem("usuario"));
+
+        if (!usuario || usuario.rol !== 0) {
+            window.location.href = "login.html";
+        } else {
+            document.getElementById("saludo").textContent = `Bienvenido, ${usuario.nombre}`;
+        }
+
+        async function cargarUsuarios() {
+            try {
+                const res = await fetch('http://localhost:8080/usuarios/show');
+                const usuarios = await res.json();
+
+                const tbody = document.querySelector('#usersTable tbody');
+                tbody.innerHTML = '';
+
+                usuarios.forEach(u => {
+                    tbody.innerHTML += `
+    <tr data-id="${u.id}">
+      <td>${u.id}</td>
+      <td>${u.nombre} ${u.nombre === usuario.nombre ? '<span class="badge bg-primary ms-2">Tú</span>' : ''}</td>
+      <td>
+        <select class="form-select rol-select" style="width: 120px;">
+          <option value="0" ${u.rol === 0 ? 'selected' : ''}>Admin</option>
+          <option value="1" ${u.rol === 1 ? 'selected' : ''}>Usuario común</option>
+        </select>
+      </td>
+      <td>
+        <input type="checkbox" class="status-check" ${u.status ? 'checked' : ''}>
+      </td>
+      <td>
+        <button class="btn btn-sm btn-warning btn-reset-pass">Cambiar contraseña</button>
+      </td>
+    </tr>`;
+                });
+
+                agregarListenersAcciones();
+
+            } catch (error) {
+                console.error("Error cargando usuarios:", error);
+            }
+        }
+
+        function agregarListenersAcciones() {
+            document.querySelectorAll('.rol-select').forEach(select => {
+                select.addEventListener('change', async (e) => {
+                    const tr = e.target.closest('tr');
+                    const id = tr.dataset.id;
+                    const nuevoRol = parseInt(e.target.value);
+                    try {
+                        const res = await fetch(`http://localhost:8080/usuarios/${id}/rol`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(nuevoRol),
+                        });
+                        if (!res.ok) throw new Error('Error al actualizar rol');
+                        alert('Rol actualizado con éxito');
+                    } catch (e) {
+                        alert(e.message);
+                    }
+                });
+            });
+
+            document.querySelectorAll('.status-check').forEach(chk => {
+                chk.addEventListener('change', async (e) => {
+                    const tr = e.target.closest('tr');
+                    const id = tr.dataset.id;
+                    const nuevoStatus = e.target.checked;
+                    try {
+                        const res = await fetch(`http://localhost:8080/usuarios/${id}/status`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(nuevoStatus),
+                        });
+                        if (!res.ok) throw new Error('Error al actualizar estado');
+                        alert('Estado actualizado con éxito');
+                    } catch (e) {
+                        alert(e.message);
+                    }
+                });
+            });
+
+            document.querySelectorAll('.btn-reset-pass').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tr = btn.closest('tr');
+                    const id = tr.dataset.id;
+                    const nuevaPass = prompt('Ingrese la nueva contraseña:');
+                    if (nuevaPass && nuevaPass.trim() !== '') {
+                        fetch(`http://localhost:8080/usuarios/${id}/password`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(nuevaPass),
+                        }).then(res => {
+                            if (res.ok) alert('Contraseña actualizada');
+                            else alert('Error actualizando contraseña');
+                        }).catch(() => alert('Error actualizando contraseña'));
+                    }
+                });
+            });
+        }
+
+
+        const createUserForm = document.getElementById('createUserForm');
+        const createUserMsg = document.getElementById('createUserMsg');
+
+        createUserForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (!createUserForm.checkValidity()) {
+                createUserForm.classList.add('was-validated');
+                return;
+            }
+
+            const nuevoUsuario = {
+                nombre: document.getElementById('newNombre').value,
+                password: document.getElementById('newPassword').value,
+                rol: parseInt(document.getElementById('newRol').value),
+                status: true
+            };
+
+            try {
+                const res = await fetch('http://localhost:8080/usuarios/registro', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(nuevoUsuario),
+                });
+
+                const texto = await res.text();
+
+                if (res.ok) {
+                    createUserMsg.textContent = texto;
+                    createUserMsg.className = 'text-success mt-2';
+                    createUserForm.reset();
+                    createUserForm.classList.remove('was-validated');
+                    cargarUsuarios();
+                } else {
+                    createUserMsg.textContent = texto;
+                    createUserMsg.className = 'text-danger mt-2';
+                }
+            } catch (error) {
+                createUserMsg.textContent = 'Error creando usuario';
+                createUserMsg.className = 'text-danger mt-2';
+            }
+        });
+
+        cargarUsuarios();
+
+    </script>
+    <script>
+
+        if (!usuario) {
+            // Si no hay usuario en sesión, lo mandamos al login
+            window.location.href = "login.html";
+        } else {
+            // Ya puedes usar los datos
+            document.getElementById("saludo").textContent = `Bienvenido, ${usuario.nombre}`;
+
+            // Y si necesitas el rol u otra info:
+            console.log("Rol del usuario:", usuario.rol);
+        }
+    </script>
+    <script>
+        // logout function
+        function logout() {
+            sessionStorage.clear();
+            window.location.href = 'index.html';
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        <footer class="bg-dark text-white text-center py-3 mt-auto">
+        <div class="container">
+            <p class="mb-1">© 2025 monitoreo público.</p>
+            <p class="mb-1">Proyecto servicio social</p>
+        </div>
+    </footer>
+</body>
+
+</html>

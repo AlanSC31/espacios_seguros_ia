@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Estadísticas de Agresiones</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body class="d-flex flex-column min-vh-100">
+  <header>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+      <div class="container-fluid d-flex justify-content-between align-items-center">
+        <a href="#"> <img src="../src/imagenes/logo_white.png" class="navbar-brand py-3" style="max-width: 100px"></a>
+
+
+        <div class="d-flex align-items-center">
+          <button class="btn btn-outline-light me-3" type="button" data-bs-toggle="offcanvas"
+            data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-label="Abrir menú">
+            ☰ Menú
+          </button>
+
+          <a href="ip_cam.html" class="btn btn-warning">
+            📷 Cámara IP en vivo
+          </a>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <div class="offcanvas offcanvas-start bg-dark text-white" tabindex="-1" id="sidebarMenu"
+    aria-labelledby="sidebarMenuLabel">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title" id="sidebarMenuLabel">Menú</h5>
+      <button type="button" class="btn-close btn-close-white text-reset" data-bs-dismiss="offcanvas"
+        aria-label="Cerrar"></button>
+    </div>
+    <div class="offcanvas-body p-0">
+      <ul class="nav flex-column">
+        <li class="nav-item">
+          <a class="nav-link text-white" href="admin_panel.html">Usuarios</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-white" href="alertas.html">Alertas congestión</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-white" href="conteo_zona.html">Conteo por zona</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-white" href="Deteccion.html">Actividad</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-white" href="agresiones_panel.html">Agresiones detectadas</a>
+        </li>
+        <li class="nav-item mt-3">
+          <a class="nav-link text-danger" href="#" onclick="logout()">Cerrar Sesión</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <main class="container my-4">
+    <h2 class="mb-4 text-center">Estadísticas de Agresiones</h2>
+
+    <div class="row mb-3">
+      <div class="col-md-6">
+        <label for="desde" class="form-label">Desde:</label>
+        <input type="datetime-local" id="desde" class="form-control" />
+      </div>
+      <div class="col-md-6">
+        <label for="hasta" class="form-label">Hasta:</label>
+        <input type="datetime-local" id="hasta" class="form-control" />
+      </div>
+    </div>
+
+    <div class="text-center mb-4">
+      <button class="btn btn-primary" onclick="cargarDatos()">Buscar</button>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Tipos de Agresión</div>
+      <div class="card-body">
+        <canvas id="graficoTipos"></canvas>
+      </div>
+    </div>
+
+    <div class="card mt-4">
+      <div class="card-header bg-danger text-white">Alertas de Agresiones</div>
+      <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
+        <ul id="listaAlertas" class="list-group mb-0">
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <footer class="bg-dark text-white text-center py-3 mt-auto">
+    <div class="container">
+      <p class="mb-1">© 2025 Espacios Seguros AI.</p>
+      <p class="mb-1">Proyecto servicio social</p>
+    </div>
+  </footer>
+
+  <script>
+    let agresiones = [];
+    let graficoTipos;
+
+    function formatoInputFecha(date) {
+      const pad = (n) => n.toString().padStart(2, "0");
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+        date.getDate()
+      )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    }
+
+    function ponerFechasPorDefecto() {
+      const ahora = new Date();
+      const desde = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), 0, 0);
+      const hasta = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), 23, 59);
+      document.getElementById("desde").value = formatoInputFecha(desde);
+      document.getElementById("hasta").value = formatoInputFecha(hasta);
+    }
+
+    async function cargarDatos() {
+      try {
+        const res = await fetch("http://localhost:8085/agresiones");
+        agresiones = await res.json();
+        filtrarYMostrar();
+      } catch (error) {
+        console.error("Error cargando datos:", error);
+        alert("No se pudieron cargar los datos de agresiones.");
+      }
+    }
+
+    function filtrarYMostrar() {
+      const desde = new Date(document.getElementById("desde").value);
+      const hasta = new Date(document.getElementById("hasta").value);
+
+      const filtrados = agresiones.filter((a) => {
+        const ts = new Date(a.timestamp);
+        return ts >= desde && ts <= hasta;
+      });
+
+      generarGraficoTipos(filtrados);
+      mostrarAlertas(filtrados);
+    }
+
+    function generarGraficoTipos(data) {
+      const conteoPorTipo = {};
+      data.forEach((a) => {
+        const tipo = a.tipoAgresion?.trim() || "Desconocido";
+        conteoPorTipo[tipo] = (conteoPorTipo[tipo] || 0) + 1;
+      });
+
+      const labels = Object.keys(conteoPorTipo);
+      const valores = Object.values(conteoPorTipo);
+
+      if (graficoTipos) graficoTipos.destroy();
+
+      const ctx = document.getElementById("graficoTipos").getContext("2d");
+      graficoTipos = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: "Cantidad",
+              data: valores,
+              backgroundColor: "rgba(255, 99, 132, 0.5)",
+              borderColor: "rgba(255, 99, 132, 1)",
+              borderWidth: 1,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: "Tipos de Agresión",
+            },
+            legend: { display: false },
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+            },
+          },
+        },
+      });
+    }
+
+    function mostrarAlertas(data) {
+      const contenedor = document.getElementById("listaAlertas");
+      contenedor.innerHTML = "";
+
+      if (data.length === 0) {
+        contenedor.innerHTML =
+          '<li class="list-group-item">No hay agresiones en este rango de fechas.</li>';
+        return;
+      }
+
+      const ordenado = [...data].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+      const agrupadas = [];
+      let actualGrupo = {
+        inicio: new Date(ordenado[0].timestamp),
+        fin: new Date(ordenado[0].timestamp),
+        tipoAgresion: new Set([ordenado[0].tipoAgresion]),
+        involucrados: new Set(normalizarIds(ordenado[0].idInvolucrados))
+      };
+
+      for (let i = 1; i < ordenado.length; i++) {
+        const actual = ordenado[i];
+        const ts = new Date(actual.timestamp);
+        const diferenciaMin = (ts - actualGrupo.fin) / 1000 / 60;
+
+        if (diferenciaMin <= 2) {
+          actualGrupo.fin = ts;
+          actualGrupo.tipoAgresion.add(actual.tipoAgresion);
+          normalizarIds(actual.idInvolucrados).forEach(id => actualGrupo.involucrados.add(id));
+        } else {
+          agrupadas.push({ ...actualGrupo });
+          actualGrupo = {
+            inicio: ts,
+            fin: ts,
+            tipoAgresion: new Set([actual.tipoAgresion]),
+            involucrados: new Set(normalizarIds(actual.idInvolucrados))
+          };
+        }
+      }
+      agrupadas.push({ ...actualGrupo });
+
+      agrupadas.forEach((grupo) => {
+        const item = document.createElement("li");
+        item.className = "list-group-item";
+        const tipos = Array.from(grupo.tipoAgresion).join(', ');
+        const cantInvolucrados = grupo.involucrados.size;
+
+        item.innerHTML = `
+      <strong>${grupo.inicio.toLocaleString()} - ${grupo.fin.toLocaleString()}</strong><br>
+      <small>Involucrados: ${cantInvolucrados}</small><br>
+      <span class="badge bg-danger rounded-pill">${tipos}</span>
+    `;
+        contenedor.appendChild(item);
+      });
+    }
+
+    function normalizarIds(cadena) {
+      return ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+    }
+
+
+    function logout() {
+      sessionStorage.clear()
+      window.location.href = "index.html";
+    }
+
+    ponerFechasPorDefecto();
+    cargarDatos();
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

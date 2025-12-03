@@ -20,7 +20,7 @@ public class ConteoZona {
     private LocalDateTime timestamp;
 
 
-    // Getters y Setters
+    // getters and setters
 
     public Integer getId() {
         return id;

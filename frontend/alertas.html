@@ -6,10 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Alertas de Congestión</title>
 
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
 
-    <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
@@ -17,42 +15,56 @@
     <header>
         <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
             <div class="container-fluid d-flex justify-content-between align-items-center">
+                <a href="#"> <img src="../src/imagenes/logo_white.png" class="navbar-brand py-3"
+                        style="max-width: 100px"></a>
 
-                <a class="navbar-brand py-3" href="#"><strong>Monitoreo Público</strong></a>
-
-                <strong>
-                    <div id="saludo" class="text-white text-center flex-grow-1">
-                    </div>
-                </strong>
 
                 <div class="d-flex align-items-center">
-                    <button class="navbar-toggler me-2" type="button" data-bs-toggle="collapse"
-                        data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false"
-                        aria-label="Toggle navigation">
-                        <span class="navbar-toggler-icon"></span>
+                    <!-- Botón para abrir menú lateral -->
+                    <button class="btn btn-outline-light me-3" type="button" data-bs-toggle="offcanvas"
+                        data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-label="Abrir menú">
+                        ☰ Menú
                     </button>
 
-                    <div class="collapse navbar-collapse" id="navbarNav">
-                        <ul class="navbar-nav ms-auto">
-                            <li class="nav-item">
-                                <a class="nav-link" href="admin_panel.html">Usuarios</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link active" aria-current="page" href="alertas.html">Alertas congestion</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="conteo_zona.html">Conteo por zona</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="#" onclick="logout()">Cerrar Sesión</a>
-                            </li>
-                        </ul>
-                    </div>
+                    <!-- Botón para ir a cámara IP -->
+                    <a href="ip_cam.html" class="btn btn-warning">
+                        📷 Cámara IP en vivo
+                    </a>
                 </div>
-
             </div>
         </nav>
     </header>
+
+    <div class="offcanvas offcanvas-start bg-dark text-white" tabindex="-1" id="sidebarMenu"
+        aria-labelledby="sidebarMenuLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="sidebarMenuLabel">Menú</h5>
+            <button type="button" class="btn-close btn-close-white text-reset" data-bs-dismiss="offcanvas"
+                aria-label="Cerrar"></button>
+        </div>
+        <div class="offcanvas-body p-0">
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link text-white" href="admin_panel.html">Usuarios</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active text-white" aria-current="page" href="alertas.html">Alertas congestión</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-white" href="conteo_zona.html">Conteo por zona</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-white" href="Deteccion.html">Actividad</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-white" href="agresiones_panel.html">Agresiones detectadas</a>
+                </li>
+                <li class="nav-item mt-3">
+                    <a class="nav-link text-danger" href="#" onclick="logout()">Cerrar Sesión</a>
+                </li>
+            </ul>
+        </div>
+    </div>
 
     <main class="container mt-4 flex-grow-1 mb-4">
 
@@ -73,21 +85,23 @@
         </form>
 
         <canvas id="chartAlertas" height="100"></canvas>
-
-        <!-- Contenedor para mostrar alertas específicas -->
         <div id="listaAlertas" class="mt-4"></div>
     </main>
+    <footer class="bg-dark text-white text-center py-3 mt-auto">
+        <div class="container">
+            <p class="mb-1">© 2025 Espacios Seguros AI.</p>
+            <p class="mb-1">Proyecto servicio social</p>
+        </div>
+    </footer>
 
     <script>
-        // Validar usuario en sesión
         const usuario = JSON.parse(sessionStorage.getItem("usuario"));
         if (!usuario || usuario.rol !== 0) {
-            window.location.href = "login.html";
+            window.location.href = "index.html";
         } else {
-            document.getElementById("saludo").textContent = `Bienvenido, ${usuario.nombre}`;
+
         }
 
-        // Configuración inicial de fechas (últimas 24 horas)
         const fechaHastaInput = document.getElementById("fechaHasta");
         const fechaDesdeInput = document.getElementById("fechaDesde");
 
@@ -102,7 +116,6 @@
 
         function normalizarFecha(fechaStr) {
             if (!fechaStr) return null;
-            // Si tiene formato "YYYY-MM-DDTHH:mm" (longitud 16), agregar ":00Z" para que JS lo entienda bien
             return fechaStr.length === 16 ? fechaStr + ":00Z" : fechaStr;
         }
 
@@ -132,7 +145,7 @@
 
                 const alertas = await res.json();
 
-                // Agrupamos por fecha y zona, pero sin sumar cantidades
+                // agrupa por fecha y zona
                 const agrupado = {};
                 const zonas = new Set();
 
@@ -146,13 +159,10 @@
                     agrupado[fechaKey][zonaKey] = cantidad;
                 });
 
-                // Obtener todas las fechas ordenadas
                 const fechasOrdenadas = Object.keys(agrupado).sort();
 
-                // Crear un array ordenado de zonas para consistencia
                 const zonasArray = [...zonas].sort();
 
-                // Completar datos faltantes con 0 para cada fecha y zona
                 fechasOrdenadas.forEach(fecha => {
                     zonasArray.forEach(zona => {
                         if (!agrupado[fecha][zona]) {
@@ -161,7 +171,6 @@
                     });
                 });
 
-                // Crear datasets para el gráfico
                 const datasets = zonasArray.map((zona, i) => {
                     const data = fechasOrdenadas.map(fecha => agrupado[fecha][zona]);
                     const color = `hsl(${(i * 360) / zonasArray.length}, 70%, 50%)`; // colores HSL
@@ -206,10 +215,8 @@
                     },
                 });
 
-                // FILTRAR Y MOSTRAR ALERTAS DE CONGESTIÓN (>=5 personas)
                 const contenedorAlertas = document.getElementById("listaAlertas");
 
-                // Limpiar el contenedor antes de agregar
                 contenedorAlertas.innerHTML = "";
 
                 let alertasCongestion = [];
@@ -243,18 +250,16 @@
         }
 
 
-        // Evento submit del formulario para filtrar
         document.getElementById("filtroFechas").addEventListener("submit", e => {
             e.preventDefault();
             cargarAlertas(fechaDesdeInput.value, fechaHastaInput.value);
         });
 
-        // Cargar alertas al cargar la página (últimas 24h)
         cargarAlertas(fechaDesdeInput.value, fechaHastaInput.value);
 
         function logout() {
             sessionStorage.clear();
-            window.location.href = "login.html";
+            window.location.href = "index.html";
         }
     </script>
 

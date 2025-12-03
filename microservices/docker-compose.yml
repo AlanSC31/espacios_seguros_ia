@@ -1,0 +1,99 @@
+services:
+  mysql-db:
+    image: mysql:8
+    container_name: mysql-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: mosca_311
+      MYSQL_DATABASE: servicio
+      MYSQL_PASSWORD: mosca_311
+    ports:
+      - "3307:3306"  
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - micro-red
+
+  gestion-usuarios-service:
+    build:
+      context: ./gestion-usuarios-service
+    container_name: gestion-usuarios-service
+    depends_on:
+      - mysql-db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/servicio
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: mosca_311
+    ports:
+      - "8081:8080"
+    networks:
+      - micro-red
+
+  alerta-congestion-service:
+    build:
+      context: ./alerta-congestion-service
+    container_name: alerta-congestion-service
+    depends_on:
+      - mysql-db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/servicio
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: mosca_311
+    ports:
+      - "8082:8080"
+    networks:
+      - micro-red
+
+  conteo-zona-service:
+    build:
+      context: ./conteo-zona-service
+    container_name: conteo-zona-service
+    depends_on:
+      - mysql-db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/servicio
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: mosca_311
+    ports:
+      - "8083:8080"
+    networks:
+      - micro-red
+
+  personas_detectadas:
+    build:
+      context: ./personas_detectadas
+    container_name: personas_detectadas
+    depends_on:
+      - mysql-db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/servicio
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: mosca_311
+    ports:
+      - "8084:8080"
+    networks:
+      - micro-red
+
+  agresiones-service:
+    build:
+      context: ./agresiones-service
+    container_name: agresiones-service
+    depends_on:
+      - mysql-db
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/servicio
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: mosca_311
+    ports:
+      - "8085:8080"
+    networks:
+      - micro-red
+
+
+
+
+volumes:
+  mysql-data:
+networks:
+  micro-red:
+    driver: bridge

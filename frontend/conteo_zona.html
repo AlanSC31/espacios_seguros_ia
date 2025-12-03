@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -13,27 +14,59 @@
   <header>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
       <div class="container-fluid d-flex justify-content-between align-items-center">
-        <a class="navbar-brand py-3" href="#"><strong>Monitoreo Público</strong></a>
-        <strong><div id="saludo" class="text-white text-center flex-grow-1"></div></strong>
+        <a href="#"> <img src="../src/imagenes/logo_white.png" class="navbar-brand py-3" style="max-width: 100px"></a>
+
+
         <div class="d-flex align-items-center">
-          <button class="navbar-toggler me-2" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
+          <!-- Botón para abrir menú lateral -->
+          <button class="btn btn-outline-light me-3" type="button" data-bs-toggle="offcanvas"
+            data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-label="Abrir menú">
+            ☰ Menú
           </button>
-          <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav ms-auto">
-              <li class="nav-item"><a class="nav-link" href="admin_panel.html">Usuarios</a></li>
-              <li class="nav-item"><a class="nav-link" href="alertas.html">Alertas congestión</a></li>
-              <li class="nav-item"><a class="nav-link active" aria-current="page" href="conteo_zona.html">Conteo por zona</a></li>
-              <li class="nav-item"><a class="nav-link" href="#" onclick="logout()">Cerrar Sesión</a></li>
-            </ul>
-          </div>
+
+          <!-- Botón para ir a cámara IP -->
+          <a href="ip_cam.html" class="btn btn-warning">
+            📷 Cámara IP en vivo
+          </a>
         </div>
       </div>
     </nav>
   </header>
 
-  <main class="container my-4">
+  <div class="offcanvas offcanvas-start bg-dark text-white" tabindex="-1" id="sidebarMenu"
+    aria-labelledby="sidebarMenuLabel">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title" id="sidebarMenuLabel">Menú</h5>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Cerrar"></button>
+    </div>
+    <div class="offcanvas-body p-0 d-flex flex-column">
+      <div class="px-3 mb-3">
+        <strong id="saludoSidebar"></strong>
+      </div>
+      <ul class="nav flex-column px-3">
+        <li class="nav-item">
+          <a class="nav-link text-white" href="admin_panel.html">Usuarios</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-white" href="alertas.html">Alertas congestión</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link active text-white" aria-current="page" href="conteo_zona.html">Conteo por zona</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-white" href="Deteccion.html">Actividad</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link text-white" href="agresiones_panel.html">Agresiones detectadas</a>
+        </li>
+        <li class="nav-item mt-auto">
+          <a class="nav-link text-danger" href="#" onclick="logout()">Cerrar Sesión</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <main class="container my-4 flex-grow-1">
     <h2 class="mb-4 text-center">Conteo por zona</h2>
 
     <!-- Filtros -->
@@ -68,18 +101,33 @@
 
   <footer class="bg-dark text-white text-center py-3 mt-auto">
     <div class="container">
-      <p class="mb-1">© 2025 Monitoreo Público.</p>
+      <p class="mb-1">© 2025 Espacios Seguros AI.</p>
       <p class="mb-1">Proyecto servicio social</p>
     </div>
   </footer>
 
-  <!-- Scripts -->
   <script>
+    function ponerFechasPorDefecto() {
+      const ahora = new Date();
+
+      const desde = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), 0, 0);
+
+      const hasta = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() + 1, 23, 59);
+
+      const formatoInput = (date) => {
+        const pad = (n) => n.toString().padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+      };
+
+      document.getElementById("desde").value = formatoInput(desde);
+      document.getElementById("hasta").value = formatoInput(hasta);
+    }
+
     const usuario = JSON.parse(sessionStorage.getItem("usuario"));
     if (!usuario || usuario.rol !== 0) {
-      window.location.href = "login.html";
+      window.location.href = "index.html";
     } else {
-      document.getElementById("saludo").textContent = `Bienvenido, ${usuario.nombre}`;
+      document.getElementById("saludoSidebar").textContent = `Bienvenido, ${usuario.nombre}`;
     }
 
     function logout() {
@@ -89,14 +137,16 @@
 
     let todosLosDatos = [];
 
+    ponerFechasPorDefecto();
+
     async function cargarDatos() {
       const desde = document.getElementById("desde").value;
       const hasta = document.getElementById("hasta").value;
 
       try {
-        const response = await fetch(`http://localhost:8084/conteo/por-rango?desde=${desde}&hasta=${hasta}`);
+        const response = await fetch(`http://localhost:8083/conteo/por-rango?desde=${desde}&hasta=${hasta}`);
         const data = await response.json();
-        todosLosDatos = data; // guardamos todos los datos
+        todosLosDatos = data;
 
         poblarZonas(data);
         renderizarGrafica();
@@ -183,7 +233,7 @@
               beginAtZero: true,
               ticks: {
                 stepSize: 1,
-                callback: function(value) {
+                callback: function (value) {
                   return Number.isInteger(value) ? value : null;
                 }
               }
@@ -193,7 +243,6 @@
       });
     }
 
-    // Redibuja la gráfica si cambias la zona
     document.getElementById("zonaFiltro").addEventListener("change", () => {
       if (todosLosDatos.length > 0) {
         renderizarGrafica();
@@ -203,4 +252,5 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+
 </html>

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cámara IP en Vivo</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body,
+    html {
+      height: 100%;
+      margin: 0;
+      background-color: #000;
+      color: white;
+    }
+
+    .container-video {
+      height: 80vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    video,
+    img {
+      max-width: 100%;
+      max-height: 100%;
+      border: 2px solid #ffc107;
+      border-radius: 8px;
+      background: black;
+    }
+  </style>
+</head>
+
+<body class="d-flex flex-column min-vh-100">
+  <header>
+    <nav class="navbar navbar-dark bg-dark">
+      <div class="container-fluid d-flex justify-content-between align-items-center">
+        <a class="navbar-brand" href="Deteccion.html"><strong>← Volver</strong></a>
+        <span class="navbar-text">Cámara IP en Vivo</span>
+      </div>
+    </nav>
+  </header>
+
+  <main class="container container-video flex-grow-1">
+    <!-- Aquí pones el stream -->
+
+    <!-- Opción 1: Si la cámara da un stream MJPEG, puedes usar una etiqueta img -->
+    <!-- <img id="stream" src="http://201.174.12.243:1024/mjpg/video.mjpg" alt="Stream cámara IP en vivo" /> -->
+
+    <!-- Opción 2: Si tienes un stream compatible con video HTML5, usa video -->
+
+    <video id="streamVideo" controls autoplay muted>
+      <source src="../src/demos/deteccion.mp4" type="video/mp4" />
+      Tu navegador no soporta reproducción de video.
+    </video>
+    <video id="streamVideo" controls autoplay muted>
+      <source src="../src/demos/agresion.mp4" type="video/mp4" />
+      Tu navegador no soporta reproducción de video.
+    </video>
+
+  </main>
+
+  <footer class="bg-dark text-white text-center py-3 mt-auto">
+    <div class="container">
+      <p class="mb-0">© 2025 Espacios Seguros AI.</p>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

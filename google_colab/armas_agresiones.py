@@ -11,7 +11,7 @@ from datetime import datetime
 from google.colab.patches import cv2_imshow
 from IPython.display import clear_output
 
-
+# --- CONFIGURACION ---
 IMGBB_API_KEY = "a5e5364eafbc5ed33d8f616904e2d797" 
 
 COOLDOWN_DB = 2.0    
@@ -37,6 +37,8 @@ VIDEO_SOURCE = "gym_attack.mp4"
 OUTPUT_NAME = "resultado_cctv_final.mp4"
 
 
+# --- FUNCIONES DE UTILIDAD ---
+
 def subir_a_imgbb(frame, etiqueta):
     try:
         filename = f"temp_{etiqueta}.jpg"
@@ -55,31 +57,56 @@ def subir_a_imgbb(frame, etiqueta):
     except Exception:
         return None
 
+# --- FUNCIONES DE BASE DE DATOS CORREGIDAS ---
+
 def insert_weapon_db(track_id, class_name, image_url):
     tipo = "arma_blanca" if str(class_name) == "0" else "arma_fuego"
+    
+    # Manejo de URL vacia para evitar error SQL
+    if image_url is None: image_url = ""
+
     try:
         conn = mysql.connector.connect(**DB_CONFIG_ARMAS)
         cursor = conn.cursor()
-        query = "INSERT INTO armas_deteccion (id_persona, tipo_arma) VALUES (%s, %s)"
-        cursor.execute(query, (int(track_id), tipo))
+        
+        # CORRECCION: Se agrego imagen_url a la query y a los valores
+        query = "INSERT INTO alerta_arma (id_persona, tipo_arma, imagen_url) VALUES (%s, %s, %s)"
+        cursor.execute(query, (int(track_id), tipo, image_url))
+        
         conn.commit()
         cursor.close()
         conn.close()
-        print(f"[BD ARMAS] OK ID: {track_id}")
-    except: pass
+        print(f"[BD ARMAS] OK ID: {track_id} URL Guardada")
+    except Exception as e:
+        # Imprimir error para debug
+        print(f"[ERROR BD ARMAS]: {e}")
 
 def insert_aggression_db(frame_num, num_people, tipo, image_url):
+    
+    if image_url is None: image_url = ""
+
     try:
         conn = mysql.connector.connect(**DB_CONFIG_AGRESIONES)
         cursor = conn.cursor()
-        sql = "INSERT INTO agresiones_detectadas (timestamp, frame_num, cant_personas, tipo_agresion) VALUES (%s, %s, %s, %s)"
-        cursor.execute(sql, (datetime.now(), int(frame_num), int(num_people), tipo))
+        
+        # CORRECCION: Se agrego imagen_url a la query y a los valores
+        sql = """
+            INSERT INTO agresiones_detectadas 
+            (timestamp, frame_num, cant_personas, tipo_agresion, imagen_url) 
+            VALUES (%s, %s, %s, %s, %s)
+        """
+        cursor.execute(sql, (datetime.now(), int(frame_num), int(num_people), tipo, image_url))
+        
         conn.commit()
         cursor.close()
         conn.close()
         print(f"[BD AGRESION] OK Frame: {frame_num} Tipo: {tipo}")
-    except: pass
+    except Exception as e:
+        # Imprimir error para debug
+        print(f"[ERROR BD AGRESION]: {e}")
 
+
+# --- MATEMATICAS Y LOGICA CCTV ---
 
 def euclidean(p1, p2):
     return np.linalg.norm(np.array(p1) - np.array(p2))
@@ -96,7 +123,7 @@ def draw_skeleton(frame, kps):
 
 def get_cctv_scale(pose):
     shoulder_dist = euclidean(pose[5], pose[6])
-    if shoulder_dist < 10: return 40.0 # Valor por defecto si falla deteccion
+    if shoulder_dist < 10: return 40.0 
     return shoulder_dist
 
 def get_centroid(pose):
@@ -131,7 +158,6 @@ def detect_aggression_cctv(pose1, pose2, speed_h1, speed_h2):
     dist_punch_1 = min(euclidean(wrist_r1, head_target), euclidean(wrist_l1, head_target))
     contacto_fisico = dist_punch_1 < (scale * 1.5)
     
-    # REGLAS
     if movimiento_rapido and contacto_fisico:
         return True, "GOLPE_CERCANO"
     if movimiento_rapido and esta_en_rango:
@@ -140,6 +166,8 @@ def detect_aggression_cctv(pose1, pose2, speed_h1, speed_h2):
     return False, ""
 
 
+# --- CARGA DE MODELOS ---
+
 print("Cargando Roboflow (Armas)...")
 rf = Roboflow(api_key="5b3nLnlY9wMoNfAcQ51R")
 project = rf.workspace("m-qczea").project("weapon_detection_v2-rdpq3")
@@ -147,19 +175,18 @@ model_weapons = project.version(2).model
 
 print("Cargando YOLO Pose (Medium)...")
 try:
-    # Intenta cargar Medium para precision. Si falla memoria, usa Nano
     model_pose = YOLO("yolov8m-pose.pt") 
 except:
     print("Medium fallo, usando Nano...")
     model_pose = YOLO("yolov8n-pose.pt")
 
-# --- 5. BUCLE PRINCIPAL ---
+# --- BUCLE PRINCIPAL ---
 
 tracker = sv.ByteTrack()
 box_annotator = sv.BoxAnnotator(color=sv.ColorPalette.DEFAULT, thickness=4)
 label_annotator = sv.LabelAnnotator(text_scale=0.6, text_thickness=2)
 
-hand_histories = defaultdict(lambda: deque(maxlen=8)) # Historial un poco mas largo para CCTV
+hand_histories = defaultdict(lambda: deque(maxlen=8)) 
 
 cap = cv2.VideoCapture(VIDEO_SOURCE)
 width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -179,22 +206,20 @@ while cap.isOpened():
     frame_count += 1
     current_time = time.time()
     
-    # --- MODULO A: ARMAS (Alta confianza para evitar mochilas) ---
+    # 1. MODULO ARMAS
     try:
-        # Confidence 45% filtra la mayoria de objetos basura en gimnasios
         res_w = model_weapons.predict(frame, confidence=45, overlap=50).json()
         detections = sv.Detections.from_inference(res_w)
         
         if len(detections) > 0:
             detections = tracker.update_with_detections(detections)
             
-            # Verificacion de seguridad para evitar errores NoneType
             if detections.tracker_id is not None:
                 labels = [f"ARMA {c:.2f}" for c in detections.confidence]
                 frame = box_annotator.annotate(scene=frame, detections=detections)
                 frame = label_annotator.annotate(scene=frame, detections=detections, labels=labels)
                 
-                # Alerta Armas
+                # Alerta BD / Foto
                 if (current_time - last_w_db) > COOLDOWN_DB:
                     url = ""
                     if (current_time - last_w_img) > COOLDOWN_IMG:
@@ -203,10 +228,12 @@ while cap.isOpened():
                         last_w_img = current_time
                     insert_weapon_db(detections.tracker_id[0], detections['class_name'][0], url)
                     last_w_db = current_time
-    except Exception: pass
+    except Exception as e: 
+        # Si falla algo en armas, que no detenga el video, pero imprimir error
+        pass
 
+    # 2. MODULO AGRESIONES
     try:
-        # Confianza baja (0.3) para captar personas desde arriba
         results_pose = model_pose.predict(frame, conf=0.3, verbose=False)[0]
         keypoints_all = []
         
@@ -249,6 +276,7 @@ while cap.isOpened():
                         cv2.putText(frame, f"ALERTA: {tipo}", (50, 100), 
                                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 3)
 
+            # Alerta BD / Foto
             if agresion_detectada:
                  if (current_time - last_a_db) > COOLDOWN_DB:
                     url = ""
@@ -259,7 +287,9 @@ while cap.isOpened():
                     insert_aggression_db(frame_count, len(keypoints_all), tipo_agresion, url)
                     last_a_db = current_time
 
-    except Exception as e: pass
+    except Exception as e: 
+        # Si falla algo en agresiones, imprimir para debug
+        pass
 
     out.write(frame)
     

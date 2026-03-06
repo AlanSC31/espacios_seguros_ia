@@ -5,3 +5,6 @@
 
 # Videos mp4 en demos
 src/demos/*.mp4
+
+*.json
+*.class

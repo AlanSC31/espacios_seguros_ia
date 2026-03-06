@@ -8,3 +8,4 @@ src/demos/*.mp4
 
 *.json
 *.class
+microservices/*.class
